@@ -32,27 +32,29 @@ print ("Scanning for image files")
 for files in os.listdir(path):
     if files.endswith(".jpg") or files.endswith(".png") or files.endswith(".jpeg"):
         print (f"Encoding {files}")
+
         #extract the name of file
         name = files.split(".")[0]
-        # print (name)
-        #extract the path of img file
+        try:
+            userId = int(name)
+            print (userId)
+        except ValueError:
+            userId = -1
+            print("Conversion failed: the string is not a valid integer.")
+        
+        #extract and encode image
         file_path = os.path.join(path,files)
-        # print(file_path)
-        #converts img to binary
         img_binary = convert_binary(file_path)
-        # print(img_binary)
-        # #load the image file
         face = facerecg.load_image_file(file_path)
-        # #encoding the image file
         face_encoding = facerecg.face_encodings(face)[0]
-        # print (type(face_encoding))
 
-        #entering values in SQL
-        cur.execute("""
-            INSERT INTO ImageDB (Person, Person_Img, Face_Encoding)
-            VALUES (?, ?, ?)""", (name, img_binary, face_encoding) )
+        #Insert values to SQL
+        if userId != -1: 
+            cur.execute("""
+                INSERT INTO ImageDB (Person, Person_Img, Face_Encoding)
+                VALUES (?, ?, ?)""", (name, img_binary, face_encoding) )
 
 #writing all the values in DB
 conn.commit()
 cur.close()
-print("Suceffully created Image DB")
+print("Successfully created Image DB")

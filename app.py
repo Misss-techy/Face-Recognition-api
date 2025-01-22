@@ -18,86 +18,73 @@ def home():
 
 @app.route("/face/predict", methods=['POST'])
 def facerecog():
+    #load image
+    image = request.files['file']
+
+    if 'file' not in request.files:
+        return "No file uploaded"
+
+    if image.mimetype not in ['image/jpeg', 'image/png', 'image/jpg']:
+        return "Invalid file type. Only image files are allowed."
+    
+    #converts img to binary
+    img_binary = image.read()
+
+    #establish connection
     conn = sqlite3.connect("Image.db")
     cur = conn.cursor()
 
-    #load & encode image
-    # img_path = input("Enter Image Path to Compare: ")
-    image = request.files['file']
-    # facerecg.load_image_file(img_path)
+    #encode image from the request
     img = facerecg.load_image_file(image)
     img_enc = facerecg.face_encodings(img)[0]
+
+    print(f"File uploaded: {image.filename}")
 
     #Extract face encoding data from DB
     cur.execute("SELECT Face_Encoding FROM ImageDB")
     rows = cur.fetchall()
+
     #Extract names from DB
     cur.execute("SELECT Person FROM ImageDB")
-    names = cur.fetchall()
+    pid = cur.fetchall()
+
+    user = -1
 
     #iterate through both name & encoding
-    for row,name in zip(rows,names):
-        name = "".join(name)
+    for row, person_id in zip(rows, pid):
+        name = person_id[0]
         row = b''.join(row)
-        # print (len(row))
+
         #converting the encoding from DB to numpy array
         db_enc = np.frombuffer(row)
-        # print (db_enc)
+
         #comapiring both images
         match = facerecg.compare_faces([img_enc], db_enc, tolerance=0.5)
-        # print (match)
-        #0 referes to true
-        user = ""
-        i=0
+
         if match[0]:
             print (f"Match Found >>> {name}")
             user = name
-            i=1
             break
-    if i==0:
-        user="Unknown"
 
-    if user == "Unknown":
-            cur.execute("SELECT MAX(Person) From ImageDB;")
-            num = cur.fetchall()
-            userid = num[0]
-            for item in userid:
-                str = item
-            i = int(str)
-            i=i+1
-            # name = str(i)
-        # if files.endswith(".jpg") or files.endswith(".png") or files.endswith(".jpeg"):
-            # print (f"Encoding {files}")
-            #extract the name of file
-            # name = files.split(".")[0]
-            # print (name)
-            #extract the path of img file
-            # file_path = os.path.join(path,files)
-            # print(file_path)
-            #converts img to binary
-            img_binary = image.read()
-            #convert_binary(image)
-            # print(img_binary)
-            # #load the image file
-            face = facerecg.load_image_file(image)
-            # #encoding the image file
-            face_encoding = facerecg.face_encodings(face)[0]
-            # print (type(face_encoding))
+    if user == -1:
+        # Create a new user ID
+        cur.execute("SELECT MAX(Person) From ImageDB;")
+        num = cur.fetchall()
+        newUser = num[0][0] + 1 if num[0] is not None else 1
+        user = newUser
+        print(f'newUser >>> {newUser}')
 
-            #entering values in SQL
-            cur.execute("""
-               INSERT INTO ImageDB (Person, Person_Img, Face_Encoding)
-               VALUES (?, ?, ?)""", (i, img_binary, face_encoding) )
+        #load and encode the image file
+        face = facerecg.load_image_file(image)
+        face_encoding = facerecg.face_encodings(face)[0]
 
-            #writing all the values in DB
-            conn.commit()
-            cur.close()        
-        
-    return user
-
-    # if user == "Unknown":
-    #     conn = sqlite3.connect("Image.db")
-        
+        # Insert new user into the database
+        cur.execute("""
+            INSERT INTO ImageDB (Person, Person_Img, Face_Encoding)
+            VALUES (?, ?, ?)""", (newUser, img_binary, face_encoding) )
+        conn.commit()
+        cur.close()        
+    return str(user)
 
 
 if __name__ == '__main__':
