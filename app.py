@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask import request
 import sqlite3
 import numpy as np
@@ -18,14 +18,25 @@ def home():
 
 @app.route("/face/predict", methods=['POST'])
 def facerecog():
+
+    if 'file' not in request.files:
+        data = {
+            'status': 400,
+            'message': "No file uploaded.",
+            'data': {}
+        }
+        return jsonify(data), 400
+
     #load image
     image = request.files['file']
 
-    if 'file' not in request.files:
-        return "No file uploaded"
-
     if image.mimetype not in ['image/jpeg', 'image/png', 'image/jpg']:
-        return "Invalid file type. Only image files are allowed."
+        data = {
+            'status': 400,
+            'message': "Invalid file type. Only image files are allowed.",
+            'data': {}
+        }
+        return jsonify(data), 400
     
     #converts img to binary
     img_binary = image.read()
@@ -83,8 +94,16 @@ def facerecog():
             INSERT INTO ImageDB (Person, Person_Img, Face_Encoding)
             VALUES (?, ?, ?)""", (newUser, img_binary, face_encoding) )
         conn.commit()
-        cur.close()        
-    return str(user)
+        cur.close()   
+
+    data = {
+        'status': 200,
+        'message': "success",
+        'data': {
+            'id': user,
+        }
+    }
+    return jsonify(data), 200
 
 
 if __name__ == '__main__':
