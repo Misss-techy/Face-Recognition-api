@@ -14,7 +14,11 @@ def convert_binary(file):
 
 @app.route("/home")
 def home():
-    return "Face recog API running"
+    data = {
+            'status': 200,
+            'message': "Hello! Face recognition API running.",
+        }
+    return jsonify(data), 200
 
 @app.route("/face/predict", methods=['POST'])
 def facerecog():
@@ -22,8 +26,7 @@ def facerecog():
     if 'file' not in request.files:
         data = {
             'status': 400,
-            'message': "No file uploaded.",
-            'data': {}
+            'message': "No file uploaded."
         }
         return jsonify(data), 400
 
@@ -33,8 +36,7 @@ def facerecog():
     if image.mimetype not in ['image/jpeg', 'image/png', 'image/jpg']:
         data = {
             'status': 400,
-            'message': "Invalid file type. Only image files are allowed.",
-            'data': {}
+            'message': "Invalid file type. Only image files are allowed."
         }
         return jsonify(data), 400
     
